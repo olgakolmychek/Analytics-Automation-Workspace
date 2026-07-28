@@ -18,3 +18,6 @@ data/temp/
 # Credentials
 credentials/*.json
 credentials/*.env
+
+data/incoming/
+test_*.py
