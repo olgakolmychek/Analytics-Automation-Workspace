@@ -6,191 +6,236 @@ Analytics Automation Workspace — система автоматизации а�
 
 Основная задача проекта:
 
-- автоматическая загрузка исходных Excel-файлов;
+- автоматическая обработка входящих Excel-файлов;
 - определение GEO;
 - загрузка данных в Google Sheets;
 - запуск пересчета формул;
 - создание архивных копий отчетов;
-- подготовка основы для масштабирования новых отчетов и проектов.
+- масштабирование под новые отчеты и проекты.
+
+Архитектура построена по принципу разделения:
+
+- общая инфраструктура находится в `app/`;
+- каждый отчет имеет собственную бизнес-логику в `app/reports/`;
+- `main.py` используется только как точка запуска.
+
 
 ---
 
 # Архитектура проекта
 
-```text
+
 Analytics-Automation-Workspace/
 
 ├── app/
-│   ├── connectors/
-│   │   ├── excel_connector.py
-│   │   ├── file_connector.py
-│   │   └── google_sheets_connector.py
-│   │
-│   ├── core/
-│   │   ├── config_loader.py
-│   │   ├── exceptions.py
-│   │   ├── logger.py
-│   │   ├── pipeline.py
-│   │   └── startup.py
-│   │
-│   ├── reports/
-│   │   └── btag_report/
-│   │       ├── calculator.py
-│   │       ├── formatter.py
-│   │       ├── processor.py
-│   │       └── validator.py
-│   │
-│   └── services/
-│       ├── geo_detector.py
-│       └── google_sheet_archive.py
+│
+│ ├── connectors/
+│ │ ├── excel_connector.py
+│ │ ├── file_connector.py
+│ │ └── google_sheets_connector.py
+│ │
+│ ├── core/
+│ │ ├── config_loader.py
+│ │ ├── exceptions.py
+│ │ ├── logger.py
+│ │ └── pipeline.py
+│ │
+│ ├── reports/
+│ │
+│ │ ├── btag_report/
+│ │ │ └── report.py
+│ │
+│ │ └── future_reports/
+│ │
+│ └── services/
+│   ├── geo_detector.py
+│   └── google_sheet_archive.py
 │
 ├── configs/
-│   ├── geos.yaml
-│   ├── projects.yaml
-│   ├── reports.yaml
-│   ├── settings.yaml
-│   └── sheets.yaml
+│ ├── settings.yaml
+│ ├── sheets.yaml
+│ ├── geos.yaml
+│ └── projects.yaml
 │
 ├── data/
-│   ├── incoming/
-│   │   └── btag/
-│   ├── processed/
-│   └── archive/
+│ ├── incoming/
+│ │ └── btag/
+│ ├── processed/
+│ └── archive/
 │
 ├── credentials/
+│
 ├── logs/
 ├── output/
-
+│
 ├── main.py
 └── requirements.txt
-Текущий отчет
-BTAG Report
 
-Текущая реализация:
 
-Проект: 1xBet
-Отчет: BTAG
+---
 
-Поддерживаемые GEO:
+# Архитектура отчетов
 
-Bolivia
-Mexico
-Guatemala
-Jamaica
-Процесс обработки
-Берется последний Excel-файл из:
+
+Каждый отчет имеет собственный модуль:
+
+
+app/reports/
+
+
+Пример:
+
+btag_report/
+
+└── report.py
+
+
+В будущем:
+
+
+payments_report/
+
+└── report.py
+
+
+affiliate_report/
+
+└── report.py
+
+
+
+Каждый отчет отвечает только за свою бизнес-логику.
+
+Общие функции:
+
+- работа с файлами;
+- Google Sheets;
+- конфигурация;
+- GEO;
+
+остаются в общих модулях.
+
+
+---
+
+# Текущий отчет
+
+## BTAG Report
+
+
+Реализован:
+
+- Проект: 1xBet
+- Отчет: BTAG
+- GEO:
+
+  - Bolivia
+  - Mexico
+  - Guatemala
+  - Jamaica
+
+
+Процесс:
+
+
+1. Система получает Excel-файлы из:
+
+
 data/incoming/btag
-Определяется GEO по столбцу:
-Страна
 
-Поддерживаются:
 
-русский язык;
-английский язык.
-Выбирается соответствующая Google Sheets таблица.
-Данные загружаются в рабочий лист:
-Sheet1
-После пересчета формул создаются архивы:
+2. Для каждого файла:
+
+- загружает данные;
+- определяет страну;
+- определяет GEO;
+- выбирает соответствующий Google Sheet.
+
+
+3. Данные загружаются:
+
+
+Google Sheets → Sheet1
+
+
+4. После пересчета формул создаются архивы:
+
+
 Отчет_YYYY-MM-DD
+
 Методы_YYYY-MM-DD
-Конфигурация
 
-Все настройки находятся в:
 
-configs/
+---
 
-Основные файлы:
+# Запуск проекта
 
-geos.yaml
 
-Список поддерживаемых GEO.
+Активация окружения:
 
-projects.yaml
 
-Список проектов.
-
-sheets.yaml
-
-Google Sheets ID и настройки отчетов.
-
-settings.yaml
-
-Общие настройки проекта.
-
-Установка
-
-Создание виртуального окружения:
-
-python -m venv venv
-
-Активация:
-
-Mac:
-
+```bash
 source venv/bin/activate
 
-Установка зависимостей:
-
-python -m pip install -r requirements.txt
-Запуск
-
-После активации окружения:
+Запуск:
 
 python main.py
 Добавление нового GEO
-Добавить GEO в:
+
+Для добавления GEO:
+
+Добавить GEO в конфигурацию:
 configs/geos.yaml
-Добавить соответствия:
-app/services/geo_detector.py
-Добавить Google Sheets ID:
+Добавить Google Sheet:
 configs/sheets.yaml
+Проверить определение GEO:
+app/services/geo_detector.py
 Добавление нового отчета
 
 Новый отчет создается отдельно:
 
-app/reports/
+app/reports/new_report/
 
-Каждый отчет содержит собственную бизнес-логику:
+Например:
 
-processor.py — обработка данных;
-validator.py — проверки;
-calculator.py — расчеты;
-formatter.py — форматирование.
+app/reports/payments_report/report.py
+
+Логика одного отчета не должна находиться в:
+
+main.py
+
+main.py отвечает только за запуск.
+
 Git workflow
 
-Проверка изменений:
+Проверить изменения:
 
 git status
 
-Добавление изменений:
+Добавить:
 
 git add .
 
-Создание версии:
+Создать версию:
 
 git commit -m "Описание изменений"
 
-Отправка на GitHub:
+Отправить:
 
 git push
 Безопасность
 
-Файлы с доступами не должны попадать в GitHub:
+Не добавляются в GitHub:
 
 credentials/
-
-Также исключаются:
-
 venv/
 logs/
 output/
 data/incoming/
-План развития
 
-Следующие этапы:
-
-автоматическая обработка нескольких отчетов;
+Следующие этапы развития: перенос расчетов из Google Sheets в Python;
+добавление calculator.py для бизнес-формул;
+добавление validator.py для проверок;
+добавление formatter.py для подготовки отчетов;
 единый pipeline для всех отчетов;
-автоматическое перемещение обработанных файлов;
-расширение поддержки новых проектов;
-автоматизация дополнительных аналитических отчетов.
+автоматическая обработка нескольких проектов.
