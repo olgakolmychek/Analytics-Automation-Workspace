@@ -1,0 +1,9 @@
+project_name: Analytics Automation Workspace
+
+environment: development
+
+language: ru
+
+timezone: Europe/Zurich
+
+version: 1.0

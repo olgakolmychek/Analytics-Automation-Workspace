@@ -1,0 +1,64 @@
+google_sheets:
+
+  enabled: true
+
+  credentials_file: credentials/google_credentials.json
+
+  projects:
+
+    1xBet:
+
+      reports:
+
+        btag:
+
+          Bolivia:
+            id: "1QB8FSxf9cKxetu1nfLaGBIMCeWiLE8qXbCWtrG2SHhA"
+
+            sheets:
+              input: Sheet1
+              report: Отчет
+              methods: Методы
+
+            archive:
+              enabled: true
+              keep_values_only: true
+
+
+          Mexico:
+            id: "1L8MPRERIk_WQVtNYGp2DgpqhBRV4VWs6H8PeF4YGysU"
+
+            sheets:
+              input: Sheet1
+              report: Отчет
+              methods: Методы
+
+            archive:
+              enabled: true
+              keep_values_only: true
+
+
+          Guatemala:
+            id: "1cBLfm11cr_WCgIidO5VdXWu0j8tG9TcuzY3uHaX-B1A"
+
+            sheets:
+              input: Sheet1
+              report: Отчет
+              methods: Методы
+
+            archive:
+              enabled: true
+              keep_values_only: true
+
+
+          Jamaica:
+            id: "1O-c2KtE0VadMuhZfR4GdXeY7HgcqCbahVtiBRnciDhM"
+
+            sheets:
+              input: Sheet1
+              report: Отчет
+              methods: Методы
+
+            archive:
+              enabled: true
+              keep_values_only: true
