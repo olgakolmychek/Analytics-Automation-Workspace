@@ -7,3 +7,11 @@ language: ru
 timezone: Europe/Zurich
 
 version: 1.0
+
+
+paths:
+  incoming_btag: data/incoming/btag
+  processed: data/processed
+  archive: data/archive
+  output: output
+  logs: logs
