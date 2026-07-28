@@ -1,0 +1,20 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# Environment variables
+.env
+
+# Mac
+.DS_Store
+
+# Logs
+logs/*.log
+
+# Temporary files
+data/temp/
+
+# Credentials
+credentials/*.json
+credentials/*.env
