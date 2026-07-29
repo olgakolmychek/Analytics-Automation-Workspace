@@ -1,6 +1,10 @@
 from app.connectors.file_connector import get_files
 from app.connectors.excel_connector import detect_excel_type
 
+from app.reports.registration_report.registration_reader import read_registration_files
+from app.reports.registration_report.deposit_reader import read_deposit_files
+from app.reports.registration_report.aggregator import aggregate_report_data
+
 
 def get_report_files(folder_path):
     """
@@ -48,3 +52,36 @@ def run(folder_path):
 
     for file in deposit_files:
         print(f"  • {file.name}")
+
+
+    # Читаем регистрации
+    registration_data = read_registration_files(
+        registration_files
+    )
+
+
+    print("\nСтатистика регистраций:")
+
+    for country, data in registration_data.items():
+        print(country)
+        print(data)
+
+
+    # Читаем депозиты
+    deposit_data = read_deposit_files(
+        deposit_files
+    )
+
+
+    # Объединяем данные регистраций и депозитов
+    report_data = aggregate_report_data(
+        registration_data,
+        deposit_data
+    )
+
+
+    print("\nОбщий отчет:")
+
+    for country, data in report_data.items():
+        print(country)
+        print(data)
