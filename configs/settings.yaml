@@ -8,9 +8,9 @@ timezone: Europe/Zurich
 
 version: 1.0
 
-
 paths:
   incoming_btag: data/incoming/btag
+  incoming_registration: data/incoming/registration_report
   processed: data/processed
   archive: data/archive
   output: output

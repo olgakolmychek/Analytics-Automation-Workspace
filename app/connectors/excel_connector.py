@@ -1,19 +1,48 @@
 from openpyxl import load_workbook
-from pathlib import Path
 
 
 def load_excel(file_path):
     """
-    Загружает Excel-файл и возвращает данные.
+    Загружает Excel-файл и возвращает все строки.
     """
 
-    workbook = load_workbook(file_path)
+    workbook = load_workbook(file_path, data_only=True)
 
     sheet = workbook.active
 
     rows = list(sheet.iter_rows(values_only=True))
 
     return rows
+
+
+def get_headers(file_path):
+    """
+    Возвращает список заголовков первой строки Excel.
+    """
+
+    workbook = load_workbook(file_path, read_only=True)
+
+    sheet = workbook.active
+
+    headers = next(sheet.iter_rows(values_only=True))
+
+    return list(headers)
+
+
+def detect_excel_type(file_path):
+    """
+    Определяет тип Excel-файла по заголовкам.
+    """
+
+    headers = get_headers(file_path)
+
+    if "Всего регистраций" in headers:
+        return "registrations"
+
+    if "Сумма в валюте отчета" in headers:
+        return "deposits"
+
+    return None
 
 
 def find_country(rows):
@@ -33,6 +62,4 @@ def find_country(rows):
     if country_column is None:
         raise Exception("Не найдена колонка Страна/Country")
 
-    country = rows[1][country_column]
-
-    return country
+    return rows[1][country_column]
