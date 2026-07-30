@@ -3,11 +3,13 @@ from app.reports.registration_report.file_detector import get_report_files
 from app.reports.registration_report.registration_reader import read_registration_files
 from app.reports.registration_report.deposit_reader import read_deposit_files
 from app.reports.registration_report.aggregator import aggregate_report_data
-from app.reports.registration_report.google_writer import (
-    write_report,
-)
+from app.reports.registration_report.google_writer import write_report
 
 from app.core.config_loader import load_config
+from app.reports.registration_report.agents_google_writer import (
+    write_agents_report,
+)
+
 
 def run(folder_path):
     """
@@ -17,7 +19,6 @@ def run(folder_path):
     registration_files, deposit_files = get_report_files(
         folder_path
     )
-
 
     print("\n==============================")
     print("Registration Report")
@@ -62,21 +63,25 @@ def run(folder_path):
         print(country)
         print(data)
 
-settings = load_config(
-    "configs/settings.yaml"
-)
 
-sheets_config = load_config(
-    "configs/sheets.yaml"
-)
+    sheets_config = load_config(
+        "configs/sheets.yaml"
+    )
 
-credentials = (
-    sheets_config["google_sheets"]
-                 ["credentials_file"]
-)
+    credentials = (
+        sheets_config["google_sheets"]
+        ["credentials_file"]
+    )
 
-write_report(
+
+    write_report(
+        report_data,
+        sheets_config,
+        credentials,
+    )
+
+    write_agents_report(
     report_data,
     sheets_config,
     credentials,
-)
+    )
