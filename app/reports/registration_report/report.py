@@ -3,7 +3,11 @@ from app.reports.registration_report.file_detector import get_report_files
 from app.reports.registration_report.registration_reader import read_registration_files
 from app.reports.registration_report.deposit_reader import read_deposit_files
 from app.reports.registration_report.aggregator import aggregate_report_data
+from app.reports.registration_report.google_writer import (
+    write_report,
+)
 
+from app.core.config_loader import load_config
 
 def run(folder_path):
     """
@@ -57,3 +61,22 @@ def run(folder_path):
     for country, data in report_data.items():
         print(country)
         print(data)
+
+settings = load_config(
+    "configs/settings.yaml"
+)
+
+sheets_config = load_config(
+    "configs/sheets.yaml"
+)
+
+credentials = (
+    sheets_config["google_sheets"]
+                 ["credentials_file"]
+)
+
+write_report(
+    report_data,
+    sheets_config,
+    credentials,
+)

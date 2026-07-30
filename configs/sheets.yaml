@@ -62,3 +62,28 @@ google_sheets:
             archive:
               enabled: true
               keep_values_only: true
+
+google_sheets:
+
+  enabled: true
+
+  credentials_file: credentials/google_credentials.json
+
+  projects:
+
+    1xBet:
+
+      reports:
+
+        btag:
+          ...
+
+        registration:
+
+          id: "ВСТАВИ_ID_ТАБЛИЦЫ"
+
+          sheets:
+            input: Sheet1
+
+          archive:
+            enabled: false

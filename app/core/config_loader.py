@@ -23,3 +23,16 @@ def get_btag_sheet_config(config, geo):
         ["btag"]
         [geo]
     )
+def get_registration_sheet_config(config):
+    """
+    Возвращает настройки Google Sheets
+    для Registration Report.
+    """
+
+    return (
+        config["google_sheets"]
+              ["projects"]
+              ["1xBet"]
+              ["reports"]
+              ["registration"]
+    )
