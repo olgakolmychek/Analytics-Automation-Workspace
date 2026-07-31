@@ -1,8 +1,19 @@
 import gspread
-from gspread.utils import rowcol_to_a1
 
 
 AGENTS_SHEET = "Агенты"
+
+
+HEADERS = [
+    "Дата",
+    "GEO",
+    "Агент",
+    "Количество депозитов",
+    "Сумма в валюте отчета",
+    "Сумма платежей",
+    "Валюта",
+    "Количество субагентов",
+]
 
 
 def write_agents_report(
@@ -13,6 +24,9 @@ def write_agents_report(
     """
     Записывает данные агентов
     в отдельный лист Агенты.
+
+    Заголовок создается только один раз.
+    Каждая новая генерация добавляется ниже.
     """
 
     client = gspread.service_account(
@@ -45,6 +59,7 @@ def write_agents_report(
     )
 
 
+
 def get_or_create_agents_sheet(
     spreadsheet,
 ):
@@ -59,6 +74,7 @@ def get_or_create_agents_sheet(
             AGENTS_SHEET
         )
 
+
     except gspread.exceptions.WorksheetNotFound:
 
 
@@ -69,6 +85,7 @@ def get_or_create_agents_sheet(
         )
 
 
+
 def write_agents_data(
     sheet,
     report_data,
@@ -76,25 +93,40 @@ def write_agents_data(
     """
     Записывает агентские данные.
 
-    Каждая новая неделя
-    добавляется ниже.
+    Заголовок создается только если лист пустой.
+    Каждая новая неделя добавляется ниже.
     """
+
+    existing_values = sheet.get_all_values()
+
+
+    # Проверяем, реально ли лист пустой
+    is_empty = (
+        len(existing_values) == 0
+        or (
+            len(existing_values) == 1
+            and not any(existing_values[0])
+        )
+    )
+
 
     rows = []
 
 
-    rows.append(
-        [
-            "Дата",
-            "GEO",
-            "Агент",
-            "Количество депозитов",
-            "Сумма в валюте отчета",
-            "Сумма платежей",
-            "Валюта",
-            "Количество субагентов",
-        ]
-    )
+    if is_empty:
+
+        rows.append(
+            [
+                "Дата",
+                "GEO",
+                "Агент",
+                "Количество депозитов",
+                "Сумма в валюте отчета",
+                "Сумма платежей",
+                "Валюта",
+                "Количество субагентов",
+            ]
+        )
 
 
     for country, data in report_data.items():
@@ -146,16 +178,23 @@ def write_agents_data(
             )
 
 
-    if len(rows) <= 1:
+    if not rows:
         return
 
 
-    next_row = len(
-        sheet.get_all_values()
-    ) + 1
+    # если лист был пустой — начинаем с A1
+    # если нет — добавляем после последней строки
+
+    if is_empty:
+
+        start_row = 1
+
+    else:
+
+        start_row = len(existing_values) + 1
 
 
     sheet.update(
-        f"A{next_row}",
-        rows
+        f"A{start_row}",
+        rows,
     )
