@@ -126,67 +126,56 @@ def read_deposit_files(deposit_files):
 
             agent_id = row[agent_col]
 
-
             if agent_id != 279:
                 continue
 
-                if agent_id not in countries[country]["agents"]:
+            if agent_id not in countries[country]["agents"]:
 
-                    countries[country]["agents"][agent_id] = {
+                countries[country]["agents"][agent_id] = {
 
-                        "count": 0,
+                    "count": 0,
 
-                        "sum_report": 0,
+                    "sum_report": 0,
 
-                        "sum_payment": 0,
+                    "sum_payment": 0,
 
-                        "currency": None,
+                    "currency": None,
 
-                        "subagents": set()
+                    "subagents": set()
 
-                    }
+                }
 
+            agent_data = (
+                countries[country]
+                ["agents"]
+                [agent_id]
+            )
 
+            agent_data["count"] += 1
 
-                agent_data = (
-                    countries[country]
-                    ["agents"]
-                    [agent_id]
+            agent_data["sum_report"] += (
+                row[report_sum_col] or 0
+            )
+
+            agent_data["sum_payment"] += (
+                row[payment_sum_col] or 0
+            )
+
+            if not agent_data["currency"]:
+
+                agent_data["currency"] = (
+                    row[payment_currency_col]
                 )
 
+            subagent = get_first_word(
+                row[subagent_col]
+            )
 
-                agent_data["count"] += 1
+            if subagent:
 
-
-                agent_data["sum_report"] += (
-                    row[report_sum_col] or 0
+                agent_data["subagents"].add(
+                    subagent
                 )
-
-
-                agent_data["sum_payment"] += (
-                    row[payment_sum_col] or 0
-                )
-
-
-                if not agent_data["currency"]:
-
-                    agent_data["currency"] = (
-                        row[payment_currency_col]
-                    )
-
-
-                subagent = get_first_word(
-                    row[subagent_col]
-                )
-
-
-                if subagent:
-
-                    agent_data["subagents"].add(
-                        subagent
-                    )
-
-
 
     #
     # Подготовка данных
