@@ -1,48 +1,90 @@
 from datetime import datetime
+
 from gspread.exceptions import WorksheetNotFound
 
 
-def create_archive_sheet(spreadsheet, source_sheet_name):
+def create_archive_sheet(
+    spreadsheet,
+    source_sheet_name,
+):
+    """
+    Создает архивный лист
+    дублированием рабочего листа.
 
-    today = datetime.now().strftime("%Y-%m-%d")
+    После дублирования
+    все формулы заменяются
+    значениями.
 
-    archive_name = f"{source_sheet_name}_{today}"
+    Полностью сохраняются:
+    - оформление
+    - цвета
+    - размеры
+    - объединения
+    - условное форматирование
+    """
+
+    today = datetime.now().strftime(
+        "%Y-%m-%d"
+    )
+
+    archive_name = (
+        f"{source_sheet_name}_{today}"
+    )
 
     counter = 2
 
     while True:
+
         try:
-            spreadsheet.worksheet(archive_name)
-            archive_name = f"{source_sheet_name}_{today} ({counter})"
+
+            spreadsheet.worksheet(
+                archive_name
+            )
+
+            archive_name = (
+                f"{source_sheet_name}_{today} ({counter})"
+            )
+
             counter += 1
 
         except WorksheetNotFound:
+
             break
 
-    source = spreadsheet.worksheet(source_sheet_name)
-
-    data = source.get_all_values()
-
-    # Убираем столбец AD из архива
-    ad_index = 29
-
-    data = [
-        row[:ad_index] + row[ad_index + 1:]
-        for row in data
-    ]
-
-    new_sheet = spreadsheet.add_worksheet(
-        title=archive_name,
-        rows=max(len(data), 100),
-        cols=max(len(data[0]), 20)
+    source_sheet = spreadsheet.worksheet(
+        source_sheet_name
     )
 
-    new_sheet.update(
-        values=data,
-        range_name="A1"
+    archive_sheet = spreadsheet.duplicate_sheet(
+        source_sheet.id,
+        new_sheet_name=archive_name,
+    )
+
+    spreadsheet.batch_update(
+        {
+            "requests": [
+                {
+                    "copyPaste": {
+                        "source": {
+                            "sheetId": archive_sheet.id,
+                            "startRowIndex": 0,
+                            "startColumnIndex": 0,
+                        },
+                        "destination": {
+                            "sheetId": archive_sheet.id,
+                            "startRowIndex": 0,
+                            "startColumnIndex": 0,
+                        },
+                        "pasteType": "PASTE_VALUES",
+                        "pasteOrientation": "NORMAL",
+                    }
+                }
+            ]
+        }
     )
 
     return archive_name
+
 
 def cleanup_old_archives(
     spreadsheet,
@@ -50,18 +92,23 @@ def cleanup_old_archives(
 ):
     """
     Удаляет старые архивы,
-    оставляя только последние keep_last.
+    оставляя только keep_last.
     """
 
-    for prefix in ["Отчет_", "Методы_"]:
+    for prefix in [
+        "Отчет_",
+        "Методы_",
+    ]:
 
         archives = sorted(
             [
                 sheet
                 for sheet in spreadsheet.worksheets()
-                if sheet.title.startswith(prefix)
+                if sheet.title.startswith(
+                    prefix
+                )
             ],
-            key=lambda sheet: sheet.title,
+            key=lambda sheet: sheet.id,
         )
 
         while len(archives) > keep_last:
