@@ -52,7 +52,7 @@ def read_deposit_files(deposit_files):
 
 
         date_col = headers.index(
-            "Дата создания"
+            "Дата проведения"
         )
 
 
