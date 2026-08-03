@@ -43,3 +43,29 @@ def create_archive_sheet(spreadsheet, source_sheet_name):
     )
 
     return archive_name
+
+def cleanup_old_archives(
+    spreadsheet,
+    keep_last=30,
+):
+    """
+    Удаляет старые архивы,
+    оставляя только последние keep_last.
+    """
+
+    for prefix in ["Отчет_", "Методы_"]:
+
+        archives = sorted(
+            [
+                sheet
+                for sheet in spreadsheet.worksheets()
+                if sheet.title.startswith(prefix)
+            ],
+            key=lambda sheet: sheet.title,
+        )
+
+        while len(archives) > keep_last:
+
+            spreadsheet.del_worksheet(
+                archives.pop(0)
+            )

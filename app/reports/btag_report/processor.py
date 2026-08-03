@@ -7,7 +7,10 @@ from app.connectors.google_sheets_connector import (
 
 from app.core.config_loader import get_btag_sheet_config
 from app.services.geo_detector import detect_geo
-from app.services.google_sheet_archive import create_archive_sheet
+from app.services.google_sheet_archive import (
+    create_archive_sheet,
+    cleanup_old_archives,
+)
 
 import time
 
@@ -91,6 +94,11 @@ def process_file(file_path, sheets_config):
 
     print(
         f"Создан архив: {methods_archive}"
+    )
+
+    cleanup_old_archives(
+        spreadsheet,
+        keep_last=30
     )
 
 
