@@ -11,6 +11,8 @@ TEMPLATE_HEIGHT = 14
 
 MAX_WEEKS = 15
 
+METHODS_START_ROW = 15
+
 
 def write_report(
     report_data,
@@ -19,7 +21,15 @@ def write_report(
 ):
     """
     Записывает Registration Report.
+
     Каждый GEO = отдельный лист.
+
+    В каждый новый недельный блок записываются:
+    - дата;
+    - регистрации;
+    - FTD;
+    - депозиты;
+    - методы оплаты начиная с 15-й строки.
     """
 
     client = gspread.service_account(
@@ -55,6 +65,11 @@ def write_report(
         )
 
         write_values(
+            sheet,
+            data,
+        )
+
+        write_methods(
             sheet,
             data,
         )
@@ -97,7 +112,7 @@ def add_week_block(
 
     if weeks >= MAX_WEEKS:
 
-        # сначала добавляем новый блок слева
+        # Сначала добавляем новый блок слева.
 
         insert_columns_left(
             spreadsheet,
@@ -110,7 +125,7 @@ def add_week_block(
             1,
         )
 
-        # потом удаляем самый старый справа
+        # Затем удаляем самый старый блок справа.
 
         remove_oldest_week(
             sheet,
@@ -161,7 +176,9 @@ def copy_template(
                             "sheetId": sheet.id,
                             "startRowIndex": 0,
                             "endRowIndex": TEMPLATE_HEIGHT,
-                            "startColumnIndex": start_column - 1,
+                            "startColumnIndex": (
+                                start_column - 1
+                            ),
                             "endColumnIndex": (
                                 start_column - 1
                                 + TEMPLATE_WIDTH
@@ -256,22 +273,22 @@ def write_values(
     data,
 ):
     """
-    Записывает только значения.
-    Формулы из шаблона сохраняются.
+    Записывает основные значения
+    Registration Report.
     """
 
     weeks = get_weeks_count(
         sheet
     )
 
-    # колонка значений (B, G, L...)
+    # Колонка значений:
+    # B, G, L, Q ...
 
     value_column = (
         (weeks - 1)
         * TEMPLATE_WIDTH
         + 2
     )
-
 
     updates = {
 
@@ -281,36 +298,178 @@ def write_values(
             ""
         ),
 
-
         # Регистрации
         3: data["registrations"]["aff"],
-
         4: data["registrations"]["org"],
 
-
         # FTD
-
         6: data["ftd"]["aff"],
-
         7: data["ftd"]["org"],
 
-
         # Депозиты
-
         11: data["deposits"]["sum"],
-
         12: data["deposits"]["count"],
     }
-
 
     for row, value in updates.items():
 
         sheet.update(
-        values=[
-            [value]
-        ],
-        range_name=rowcol_to_a1(
-            row,
-            value_column,
-        ),
+            values=[
+                [value]
+            ],
+            range_name=rowcol_to_a1(
+                row,
+                value_column,
+            ),
+        )
+
+
+def write_methods(
+    sheet,
+    data,
+):
+    """
+    Записывает методы оплаты начиная с 15-й строки.
+
+    Структура:
+
+    Агент / Группа | Доля | Кол-во депозитов | Конверсии
+
+    Все строки записываются обычным шрифтом.
+
+    Доля и конверсия записываются
+    сразу с символом %.
+
+    unresolved_message не записывается.
+    """
+
+    methods_data = data.get(
+        "methods"
+    )
+
+    if not methods_data:
+        return
+
+    weeks = get_weeks_count(
+        sheet
+    )
+
+    # Первый столбец текущего недельного блока.
+    #
+    # Неделя 1: A
+    # Неделя 2: F
+    # Неделя 3: K
+    # ...
+
+    start_column = (
+        (weeks - 1)
+        * TEMPLATE_WIDTH
+        + 1
+    )
+
+    rows = []
+
+    for group in methods_data.get(
+        "rows",
+        []
+    ):
+
+        share = group.get(
+            "share"
+        )
+
+        conversion = group.get(
+            "conversion"
+        )
+
+        rows.append(
+            [
+                group.get(
+                    "name",
+                    ""
+                ),
+                (
+                    f"{share:.1f}%"
+                    if share is not None
+                    else ""
+                ),
+                group.get(
+                    "deposits",
+                    ""
+                ),
+                (
+                    f"{conversion:.1f}%"
+                    if conversion is not None
+                    else ""
+                ),
+            ]
+        )
+
+        for detail in group.get(
+            "detail",
+            []
+        ):
+
+            detail_share = detail.get(
+                "share"
+            )
+
+            detail_conversion = detail.get(
+                "conversion"
+            )
+
+            rows.append(
+                [
+                    detail.get(
+                        "name",
+                        ""
+                    ),
+                    (
+                        f"{detail_share:.1f}%"
+                        if detail_share is not None
+                        else ""
+                    ),
+                    detail.get(
+                        "deposits",
+                        ""
+                    ),
+                    (
+                        f"{detail_conversion:.1f}%"
+                        if detail_conversion is not None
+                        else ""
+                    ),
+                ]
+            )
+
+    if not rows:
+        return
+
+    # ========================================================
+    # Записываем всю таблицу одним update
+    # ========================================================
+
+    end_row = (
+        METHODS_START_ROW
+        + len(rows)
+        - 1
+    )
+
+    end_column = (
+        start_column + 3
+    )
+
+    range_name = (
+        f"{rowcol_to_a1(
+            METHODS_START_ROW,
+            start_column
+        )}:"
+        f"{rowcol_to_a1(
+            end_row,
+            end_column
+        )}"
+    )
+
+    sheet.update(
+        values=rows,
+        range_name=range_name,
     )

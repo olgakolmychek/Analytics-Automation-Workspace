@@ -69,6 +69,10 @@ google_sheets:
 
           sheets:
             input: Sheet1
+          
+          mapping:
+            id: "1-1pns8j3JIHh2Uyj0Fpyq291DNNDDnMk81qVp7EE99M"
+            sheet: "Mapping"
 
           archive:
             enabled: false

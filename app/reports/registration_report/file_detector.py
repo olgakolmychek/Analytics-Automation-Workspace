@@ -4,14 +4,18 @@ from app.connectors.excel_connector import detect_excel_type
 
 def get_report_files(folder_path):
     """
-    Разделяет входные Excel-файлы
-    на файлы регистраций и депозитов.
+    Разделяет входные файлы Registration Report:
+
+    - registrations — файл регистраций
+    - deposits — старый файл депозитов
+    - conversions — ConvertionReport.xlsx с данными по методам
     """
 
     files = get_files(folder_path)
 
     registration_files = []
     deposit_files = []
+    conversion_files = []
 
     for file in files:
 
@@ -23,9 +27,16 @@ def get_report_files(folder_path):
         elif file_type == "deposits":
             deposit_files.append(file)
 
+        elif file_type == "conversions":
+            conversion_files.append(file)
+
         else:
             print(
                 f"Не удалось определить тип файла: {file.name}"
             )
 
-    return registration_files, deposit_files
+    return (
+        registration_files,
+        deposit_files,
+        conversion_files,
+    )

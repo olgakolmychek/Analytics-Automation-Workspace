@@ -41,7 +41,20 @@ def detect_excel_type(file_path):
 
     if "Сумма в валюте отчета" in headers:
         return "deposits"
+    conversion_headers = {
+        "Агент",
+        "Агент (ID)",
+        "Субагент",
+        "Субагент (ID)",
+        "Страна",
+        "Количество 'OK'",
+        "Доля 'OK', %",
+        "Общее количество заявок",
+    }
 
+    if conversion_headers.issubset(set(headers)):
+        return "conversions"
+    
     return None
 
 
