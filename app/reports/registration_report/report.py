@@ -10,12 +10,17 @@ from app.reports.registration_report.deposit_reader import (
     read_deposit_files,
 )
 
+from app.reports.registration_report.highrollers_report import (
+    build_highrollers_report,
+)
+
 from app.reports.registration_report.aggregator import (
     aggregate_report_data,
 )
 
 from app.reports.registration_report.google_writer import (
     write_report,
+    write_highrollers_report,
 )
 
 from app.reports.registration_report.agents_google_writer import (
@@ -61,7 +66,9 @@ def run():
     )
 
     for file in registration_files:
-        print(f"  • {file.name}")
+        print(
+            f"  • {file.name}"
+        )
 
     print(
         f"\nФайлов депозитов: "
@@ -69,7 +76,9 @@ def run():
     )
 
     for file in deposit_files:
-        print(f"  • {file.name}")
+        print(
+            f"  • {file.name}"
+        )
 
     print(
         f"\nФайлов конверсий: "
@@ -77,10 +86,12 @@ def run():
     )
 
     for file in conversion_files:
-        print(f"  • {file.name}")
+        print(
+            f"  • {file.name}"
+        )
 
     # ========================================================
-    # Старый Registration Report
+    # Registration Report
     # ========================================================
 
     registration_data = read_registration_files(
@@ -90,6 +101,18 @@ def run():
     deposit_data = read_deposit_files(
         deposit_files
     )
+
+    # ========================================================
+    # Highrollers Report
+    # ========================================================
+
+    highrollers_data = build_highrollers_report(
+        deposit_files
+    )
+
+    # ========================================================
+    # Основной Registration Report
+    # ========================================================
 
     report_data = aggregate_report_data(
         registration_data,
@@ -179,7 +202,7 @@ def run():
         ] = methods
 
     # ========================================================
-    # Вывод в консоль
+    # Вывод Registration Report
     # ========================================================
 
     print("\nОбщий отчет:")
@@ -193,6 +216,41 @@ def run():
         print(data)
 
     # ========================================================
+    # Вывод Highrollers Report
+    # ========================================================
+
+    print("\n==============================")
+    print("Top 5 Highrollers")
+    print("==============================")
+
+    print(
+        f"\nПериод: "
+        f"{highrollers_data['period']}"
+    )
+
+    for country, players in (
+        highrollers_data["countries"].items()
+    ):
+
+        print(
+            f"\n{country}"
+        )
+
+        for index, player in enumerate(
+            players,
+            start=1,
+        ):
+
+            print(
+                f"{index}. "
+                f"ID: {player['player_id']} | "
+                f"Сумма: {player['sum']} | "
+                f"Депозитов: {player['count']} | "
+                f"Первый: {player['first_deposit']} | "
+                f"Последний: {player['last_deposit']}"
+            )
+
+    # ========================================================
     # Google Sheets
     # ========================================================
 
@@ -204,6 +262,12 @@ def run():
 
     write_agents_report(
         report_data,
+        sheets_config,
+        credentials,
+    )
+
+    write_highrollers_report(
+        highrollers_data,
         sheets_config,
         credentials,
     )

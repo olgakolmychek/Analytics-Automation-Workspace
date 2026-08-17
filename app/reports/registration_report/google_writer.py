@@ -1,7 +1,9 @@
 import gspread
 from gspread.utils import rowcol_to_a1
 
-from app.reports.registration_report.geo_mapper import get_sheet_name
+from app.reports.registration_report.geo_mapper import (
+    get_sheet_name,
+)
 
 
 TEMPLATE_SHEET = "Шаблон"
@@ -12,6 +14,18 @@ TEMPLATE_HEIGHT = 14
 MAX_WEEKS = 15
 
 METHODS_START_ROW = 15
+
+HIGHROLLERS_SHEET = "Хайроллеры"
+
+HIGHROLLERS_HEADERS = [
+    "Неделя",
+    "Дата первого пополнения",
+    "Дата последнего пополнения",
+    "Страна",
+    "ID",
+    "Сумма, USD",
+    "Кол-во депозитов",
+]
 
 
 def write_report(
@@ -73,6 +87,234 @@ def write_report(
             sheet,
             data,
         )
+
+
+def write_highrollers_report(
+    highrollers_data,
+    sheets_config,
+    credentials,
+):
+    """
+    Записывает Top-5 хайроллеров.
+
+    Каждый новый запуск добавляет новые строки
+    вниз существующей таблицы.
+
+    Структура:
+
+    Неделя |
+    Дата первого пополнения |
+    Дата последнего пополнения |
+    Страна |
+    ID |
+    Сумма, USD |
+    Кол-во депозитов
+    """
+
+    if not highrollers_data:
+        return
+
+    countries = highrollers_data.get(
+        "countries",
+        {}
+    )
+
+    if not countries:
+        return
+
+    period = highrollers_data.get(
+        "period"
+    )
+
+    if not period:
+        return
+
+    client = gspread.service_account(
+        filename=credentials
+    )
+
+    config = (
+        sheets_config["google_sheets"]
+        ["projects"]
+        ["1xBet"]
+        ["reports"]
+        ["registration"]
+    )
+
+    spreadsheet = client.open_by_key(
+        config["id"]
+    )
+
+    # ========================================================
+    # Получаем / создаём лист Хайроллеры
+    # ========================================================
+
+    sheet = get_or_create_highrollers_sheet(
+        spreadsheet
+    )
+
+    # ========================================================
+    # Формируем строки
+    # ========================================================
+
+    rows = []
+
+    for country, players in countries.items():
+
+        for player in players:
+
+            first_deposit = format_date(
+                player.get(
+                    "first_deposit"
+                )
+            )
+
+            last_deposit = format_date(
+                player.get(
+                    "last_deposit"
+                )
+            )
+
+            total_sum = round(
+                player.get(
+                    "sum",
+                    0
+                ),
+                2,
+            )
+
+            deposit_count = player.get(
+                "count",
+                0
+            )
+
+            rows.append(
+                [
+                    period,
+                    first_deposit,
+                    last_deposit,
+                    country,
+                    player.get(
+                        "player_id",
+                        ""
+                    ),
+                    total_sum,
+                    deposit_count,
+                ]
+            )
+
+    if not rows:
+        return
+
+    # ========================================================
+    # Добавляем новые строки ВНИЗ
+    # ========================================================
+
+    sheet.append_rows(
+        rows,
+        value_input_option="USER_ENTERED",
+    )
+
+    print(
+        "\nHighrollers Report записан в Google Sheets:"
+    )
+
+    print(
+        f"  • Лист: {HIGHROLLERS_SHEET}"
+    )
+
+    print(
+        f"  • Период: {period}"
+    )
+
+    print(
+        f"  • Добавлено строк: {len(rows)}"
+    )
+
+
+def get_or_create_highrollers_sheet(
+    spreadsheet,
+):
+    """
+    Возвращает лист Хайроллеры.
+
+    Если листа нет — создаёт его
+    и добавляет заголовки.
+    """
+
+    try:
+
+        sheet = spreadsheet.worksheet(
+            HIGHROLLERS_SHEET
+        )
+
+        return sheet
+
+    except gspread.exceptions.WorksheetNotFound:
+
+        sheet = spreadsheet.add_worksheet(
+            title=HIGHROLLERS_SHEET,
+            rows=1000,
+            cols=len(
+                HIGHROLLERS_HEADERS
+            ),
+        )
+
+        sheet.append_row(
+            HIGHROLLERS_HEADERS,
+            value_input_option="USER_ENTERED",
+        )
+
+        return sheet
+
+
+def format_date(value):
+    """
+    Преобразует дату в формат:
+
+    DD.MM.YYYY
+
+    Время отбрасывается.
+    """
+
+    if not value:
+        return ""
+
+    if hasattr(value, "strftime"):
+
+        return value.strftime(
+            "%d.%m.%Y"
+        )
+
+    value = str(value)
+
+    # Если пришла строка вида:
+    # 2026-08-11 01:16:07
+
+    if " " in value:
+
+        value = value.split(
+            " ",
+            1
+        )[0]
+
+    # Пробуем ISO-формат
+
+    try:
+
+        from datetime import datetime
+
+        date_value = datetime.fromisoformat(
+            value
+        )
+
+        return date_value.strftime(
+            "%d.%m.%Y"
+        )
+
+    except ValueError:
+
+        return value
 
 
 def get_or_create_sheet(
