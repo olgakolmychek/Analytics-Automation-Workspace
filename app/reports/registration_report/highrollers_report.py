@@ -6,38 +6,58 @@ TOP_COUNT = 5
 
 def build_highrollers_report(deposit_files):
     """
-    Формирует Top-5 хайроллеров по каждому GEO.
+    Формирует два Top-5 отчета по каждому GEO:
 
-    Для каждого игрока считаем:
-    - дату первого депозита
-    - дату последнего депозита
-    - общую сумму депозитов в валюте отчета
+    1. Top-5 игроков по общей сумме депозитов за неделю.
+    2. Top-5 игроков по Average Deposit.
+
+    Average Deposit =
+        сумма всех депозитов игрока за неделю
+        /
+        количество его депозитов за неделю
+
+    Для каждого игрока сохраняется:
+    - ID игрока
+    - дата первого депозита
+    - дата последнего депозита
+    - сумма депозитов
     - количество депозитов
+    - средний депозит
 
     Возвращает:
+
     {
         "period": "...",
+
         "countries": {
-            "Bolivia": [
-                {
-                    "player_id": ...,
-                    "first_deposit": ...,
-                    "last_deposit": ...,
-                    "sum": ...,
-                    "count": ...
-                }
-            ]
+
+            "Мексика": {
+                "by_sum": [...],
+                "by_average": [...]
+            },
+
+            "Боливия": {
+                "by_sum": [...],
+                "by_average": [...]
+            }
+
         }
     }
     """
 
     players = {}
+
     report_dates = []
+
+    # ========================================================
+    # Чтение файлов депозитов
+    # ========================================================
 
     for file in deposit_files:
 
         print(
-            f"Обработка файла для Highrollers: {file.name}"
+            f"Обработка файла для Highrollers: "
+            f"{file.name}"
         )
 
         rows = load_excel(file)
@@ -63,15 +83,22 @@ def build_highrollers_report(deposit_files):
             "Сумма в валюте отчета"
         )
 
+        # ====================================================
+        # Обрабатываем строки
+        # ====================================================
+
         for row in rows[1:]:
 
             player_id = row[player_col]
+
             country = row[country_col]
+
             transaction_date = row[date_col]
+
             deposit_sum = row[report_sum_col]
 
             # ------------------------------------------------
-            # Проверяем обязательные данные
+            # Проверяем обязательные поля
             # ------------------------------------------------
 
             if not player_id:
@@ -95,7 +122,7 @@ def build_highrollers_report(deposit_files):
             )
 
             # ------------------------------------------------
-            # Создаем структуру GEO
+            # GEO
             # ------------------------------------------------
 
             if country not in players:
@@ -103,7 +130,7 @@ def build_highrollers_report(deposit_files):
                 players[country] = {}
 
             # ------------------------------------------------
-            # Создаем игрока
+            # Игрок
             # ------------------------------------------------
 
             if player_id not in players[country]:
@@ -112,9 +139,13 @@ def build_highrollers_report(deposit_files):
 
                     "player_id": player_id,
 
-                    "first_deposit": transaction_date,
+                    "first_deposit": (
+                        transaction_date
+                    ),
 
-                    "last_deposit": transaction_date,
+                    "last_deposit": (
+                        transaction_date
+                    ),
 
                     "sum": 0,
 
@@ -140,7 +171,10 @@ def build_highrollers_report(deposit_files):
             # Первый депозит
             # ------------------------------------------------
 
-            if transaction_date < player["first_deposit"]:
+            if (
+                transaction_date
+                < player["first_deposit"]
+            ):
 
                 player["first_deposit"] = (
                     transaction_date
@@ -150,7 +184,10 @@ def build_highrollers_report(deposit_files):
             # Последний депозит
             # ------------------------------------------------
 
-            if transaction_date > player["last_deposit"]:
+            if (
+                transaction_date
+                > player["last_deposit"]
+            ):
 
                 player["last_deposit"] = (
                     transaction_date
@@ -171,27 +208,70 @@ def build_highrollers_report(deposit_files):
         )
 
     # ========================================================
-    # Top-5 по каждому GEO
+    # Подготавливаем Average Deposit
     # ========================================================
 
-    top_players = {}
+    for country_players in players.values():
+
+        for player in country_players.values():
+
+            if player["count"] > 0:
+
+                player["average_deposit"] = (
+                    player["sum"]
+                    / player["count"]
+                )
+
+            else:
+
+                player["average_deposit"] = 0
+
+    # ========================================================
+    # Формируем Top-5 по каждому GEO
+    # ========================================================
+
+    countries = {}
 
     for country, country_players in players.items():
 
-        sorted_players = sorted(
+        # ----------------------------------------------------
+        # Top-5 по общей сумме депозитов
+        # ----------------------------------------------------
+
+        by_sum = sorted(
             country_players.values(),
-            key=lambda player: player["sum"],
+            key=lambda player: (
+                player["sum"],
+                player["count"],
+            ),
             reverse=True,
         )
 
-        top_players[country] = (
-            sorted_players[:TOP_COUNT]
+        # ----------------------------------------------------
+        # Top-5 по Average Deposit
+        # ----------------------------------------------------
+
+        by_average = sorted(
+            country_players.values(),
+            key=lambda player: (
+                player["average_deposit"],
+                player["sum"],
+            ),
+            reverse=True,
         )
+
+        countries[country] = {
+
+            "by_sum": by_sum[:TOP_COUNT],
+
+            "by_average": by_average[:TOP_COUNT],
+
+        }
 
     return {
 
         "period": period,
 
-        "countries": top_players,
+        "countries": countries,
 
     }

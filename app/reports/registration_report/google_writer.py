@@ -15,9 +15,19 @@ MAX_WEEKS = 15
 
 METHODS_START_ROW = 15
 
+
+# ============================================================
+# Highrollers
+# ============================================================
+
 HIGHROLLERS_SHEET = "Хайроллеры"
 
-HIGHROLLERS_HEADERS = [
+HIGHROLLERS_SUM_START_COLUMN = 1
+HIGHROLLERS_AVERAGE_START_COLUMN = 9
+
+HIGHROLLERS_TABLE_WIDTH = 6
+
+HIGHROLLERS_HEADERS_SUM = [
     "Неделя",
     "Дата первого пополнения",
     "Дата последнего пополнения",
@@ -25,6 +35,15 @@ HIGHROLLERS_HEADERS = [
     "ID",
     "Сумма, USD",
     "Кол-во депозитов",
+]
+
+HIGHROLLERS_HEADERS_AVERAGE = [
+    "Неделя",
+    "Дата первого пополнения",
+    "Дата последнего пополнения",
+    "Страна",
+    "ID",
+    "Средний деп, USD",
 ]
 
 
@@ -95,20 +114,22 @@ def write_highrollers_report(
     credentials,
 ):
     """
-    Записывает Top-5 хайроллеров.
+    Записывает Highrollers Report.
 
-    Каждый новый запуск добавляет новые строки
-    вниз существующей таблицы.
+    Левая таблица:
+    A:G
 
-    Структура:
+    Top-5 по общей сумме депозитов.
 
-    Неделя |
-    Дата первого пополнения |
-    Дата последнего пополнения |
-    Страна |
-    ID |
-    Сумма, USD |
-    Кол-во депозитов
+    H:
+    пустой разделитель.
+
+    Правая таблица:
+    I:N
+
+    Top-5 по Average Deposit.
+
+    Каждый новый запуск добавляет строки вниз.
     """
 
     if not highrollers_data:
@@ -129,6 +150,10 @@ def write_highrollers_report(
     if not period:
         return
 
+    # ========================================================
+    # Подключение к Google Sheets
+    # ========================================================
+
     client = gspread.service_account(
         filename=credentials
     )
@@ -146,7 +171,7 @@ def write_highrollers_report(
     )
 
     # ========================================================
-    # Получаем / создаём лист Хайроллеры
+    # Получаем / создаём лист
     # ========================================================
 
     sheet = get_or_create_highrollers_sheet(
@@ -154,69 +179,183 @@ def write_highrollers_report(
     )
 
     # ========================================================
-    # Формируем строки
+    # Формируем две таблицы
     # ========================================================
 
-    rows = []
+    sum_rows = []
 
-    for country, players in countries.items():
+    average_rows = []
 
-        for player in players:
+    for country, country_data in countries.items():
 
-            first_deposit = format_date(
-                player.get(
-                    "first_deposit"
-                )
-            )
+        # ====================================================
+        # Top-5 по сумме
+        # ====================================================
 
-            last_deposit = format_date(
-                player.get(
-                    "last_deposit"
-                )
-            )
+        for player in country_data.get(
+            "by_sum",
+            []
+        ):
 
-            total_sum = round(
-                player.get(
-                    "sum",
-                    0
-                ),
-                2,
-            )
-
-            deposit_count = player.get(
-                "count",
-                0
-            )
-
-            rows.append(
+            sum_rows.append(
                 [
                     period,
-                    first_deposit,
-                    last_deposit,
+
+                    format_date(
+                        player.get(
+                            "first_deposit"
+                        )
+                    ),
+
+                    format_date(
+                        player.get(
+                            "last_deposit"
+                        )
+                    ),
+
                     country,
+
                     player.get(
                         "player_id",
                         ""
                     ),
-                    total_sum,
-                    deposit_count,
+
+                    round(
+                        player.get(
+                            "sum",
+                            0
+                        ),
+                        2,
+                    ),
+
+                    player.get(
+                        "count",
+                        0
+                    ),
                 ]
             )
 
-    if not rows:
+        # ====================================================
+        # Top-5 по Average Deposit
+        # ====================================================
+
+        for player in country_data.get(
+            "by_average",
+            []
+        ):
+
+            average_rows.append(
+                [
+                    period,
+
+                    format_date(
+                        player.get(
+                            "first_deposit"
+                        )
+                    ),
+
+                    format_date(
+                        player.get(
+                            "last_deposit"
+                        )
+                    ),
+
+                    country,
+
+                    player.get(
+                        "player_id",
+                        ""
+                    ),
+
+                    round(
+                        player.get(
+                            "average_deposit",
+                            0
+                        ),
+                        2,
+                    ),
+                ]
+            )
+
+    if not sum_rows:
+        return
+
+    if not average_rows:
         return
 
     # ========================================================
-    # Добавляем новые строки ВНИЗ
+    # Находим первую свободную строку
     # ========================================================
 
-    sheet.append_rows(
-        rows,
-        value_input_option="USER_ENTERED",
+    start_row = (
+        get_highrollers_next_row(
+            sheet
+        )
     )
 
+    # ========================================================
+    # Записываем левую таблицу A:G
+    # ========================================================
+
+    sum_end_row = (
+        start_row
+        + len(sum_rows)
+        - 1
+    )
+
+    sum_range = (
+        f"{rowcol_to_a1(
+            start_row,
+            HIGHROLLERS_SUM_START_COLUMN
+        )}:"
+        f"{rowcol_to_a1(
+            sum_end_row,
+            HIGHROLLERS_SUM_START_COLUMN
+            + len(HIGHROLLERS_HEADERS_SUM)
+            - 1
+        )}"
+    )
+
+    sheet.update(
+        values=sum_rows,
+        range_name=sum_range,
+    )
+
+    # ========================================================
+    # Записываем правую таблицу I:N
+    # ========================================================
+
+    average_end_row = (
+        start_row
+        + len(average_rows)
+        - 1
+    )
+
+    average_range = (
+        f"{rowcol_to_a1(
+            start_row,
+            HIGHROLLERS_AVERAGE_START_COLUMN
+        )}:"
+        f"{rowcol_to_a1(
+            average_end_row,
+            HIGHROLLERS_AVERAGE_START_COLUMN
+            + len(HIGHROLLERS_HEADERS_AVERAGE)
+            - 1
+        )}"
+    )
+
+    sheet.update(
+        values=average_rows,
+        range_name=average_range,
+    )
+
+    # ========================================================
+    # Вывод в консоль
+    # ========================================================
+
     print(
-        "\nHighrollers Report записан в Google Sheets:"
+        "\nHighrollers Report записан "
+        "в Google Sheets:"
     )
 
     print(
@@ -228,7 +367,13 @@ def write_highrollers_report(
     )
 
     print(
-        f"  • Добавлено строк: {len(rows)}"
+        f"  • Top-5 по сумме: "
+        f"{len(sum_rows)} строк"
+    )
+
+    print(
+        f"  • Top-5 Average Deposit: "
+        f"{len(average_rows)} строк"
     )
 
 
@@ -239,7 +384,7 @@ def get_or_create_highrollers_sheet(
     Возвращает лист Хайроллеры.
 
     Если листа нет — создаёт его
-    и добавляет заголовки.
+    и добавляет заголовки двух таблиц.
     """
 
     try:
@@ -255,22 +400,77 @@ def get_or_create_highrollers_sheet(
         sheet = spreadsheet.add_worksheet(
             title=HIGHROLLERS_SHEET,
             rows=1000,
-            cols=len(
-                HIGHROLLERS_HEADERS
-            ),
+            cols=14,
         )
 
-        sheet.append_row(
-            HIGHROLLERS_HEADERS,
-            value_input_option="USER_ENTERED",
+        # ====================================================
+        # Заголовок левой таблицы A:G
+        # ====================================================
+
+        left_range = (
+            f"A1:G1"
+        )
+
+        sheet.update(
+            values=[
+                HIGHROLLERS_HEADERS_SUM
+            ],
+            range_name=left_range,
+        )
+
+        # ====================================================
+        # Заголовок правой таблицы I:N
+        # ====================================================
+
+        right_range = (
+            f"I1:N1"
+        )
+
+        sheet.update(
+            values=[
+                HIGHROLLERS_HEADERS_AVERAGE
+            ],
+            range_name=right_range,
         )
 
         return sheet
 
 
-def format_date(value):
+def get_highrollers_next_row(
+    sheet,
+):
     """
-    Преобразует дату в формат:
+    Находит первую свободную строку
+    для нового недельного блока.
+
+    Используется колонка A как основная.
+    """
+
+    values = sheet.col_values(
+        1
+    )
+
+    if not values:
+
+        return 2
+
+    # Если есть только заголовок
+
+    if len(values) == 1:
+
+        return 2
+
+    # Следующая строка после последней
+    # заполненной строки
+
+    return len(values) + 1
+
+
+def format_date(
+    value,
+):
+    """
+    Преобразует дату в:
 
     DD.MM.YYYY
 
@@ -280,7 +480,14 @@ def format_date(value):
     if not value:
         return ""
 
-    if hasattr(value, "strftime"):
+    # ========================================================
+    # Если это datetime / date
+    # ========================================================
+
+    if hasattr(
+        value,
+        "strftime",
+    ):
 
         return value.strftime(
             "%d.%m.%Y"
@@ -288,8 +495,9 @@ def format_date(value):
 
     value = str(value)
 
-    # Если пришла строка вида:
-    # 2026-08-11 01:16:07
+    # ========================================================
+    # Если строка содержит время
+    # ========================================================
 
     if " " in value:
 
@@ -298,7 +506,9 @@ def format_date(value):
             1
         )[0]
 
-    # Пробуем ISO-формат
+    # ========================================================
+    # ISO дата
+    # ========================================================
 
     try:
 
@@ -327,6 +537,7 @@ def get_or_create_sheet(
     """
 
     try:
+
         return spreadsheet.worksheet(
             sheet_name
         )
@@ -434,12 +645,16 @@ def copy_template(
     )
 
 
-def get_weeks_count(sheet):
+def get_weeks_count(
+    sheet,
+):
     """
     Считает количество недельных блоков.
     """
 
-    values = sheet.row_values(1)
+    values = sheet.row_values(
+        1
+    )
 
     weeks = 0
 
@@ -461,7 +676,9 @@ def get_weeks_count(sheet):
     return weeks
 
 
-def remove_oldest_week(sheet):
+def remove_oldest_week(
+    sheet,
+):
     """
     Удаляет крайний правый старый блок.
     """
@@ -582,7 +799,7 @@ def write_methods(
     Доля и конверсия записываются
     сразу с символом %.
 
-    unresolved_message не записывается.
+    unresolved_message пока не записывается.
     """
 
     methods_data = data.get(
@@ -597,11 +814,6 @@ def write_methods(
     )
 
     # Первый столбец текущего недельного блока.
-    #
-    # Неделя 1: A
-    # Неделя 2: F
-    # Неделя 3: K
-    # ...
 
     start_column = (
         (weeks - 1)
